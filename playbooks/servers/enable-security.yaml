@@ -64,6 +64,9 @@
       ansible.builtin.command: sshd -t
       changed_when: false
 
+    - name: Restart SSH immediately after port change
+      ansible.builtin.meta: flush_handlers
+
     #
     # UFW Configuration
     #
