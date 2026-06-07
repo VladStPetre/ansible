@@ -8,5 +8,5 @@
   tasks:
   - name: Reboot host
     ansible.builtin.reboot:
-    reboot_timeout: 600
-    post_reboot_delay: 10
+      reboot_timeout: 600
+      post_reboot_delay: 10
