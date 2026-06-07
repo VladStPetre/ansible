@@ -1,0 +1,12 @@
+---
+- name: Rolling reboot hosts
+  hosts: all
+  serial: 1
+  become: true
+  gather_facts: false
+
+  tasks:
+  - name: Reboot host
+    ansible.builtin.reboot:
+    reboot_timeout: 600
+    post_reboot_delay: 10
