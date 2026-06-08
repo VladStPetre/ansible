@@ -1,0 +1,45 @@
+---
+- name: Update and upgrade apt packages
+  hosts: sierra
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Force apt to use IPv4
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99force-ipv4
+        content: |
+          Acquire::ForceIPv4 "true";
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Wait for apt/dpkg locks
+      ansible.builtin.shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+              fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+              fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+          sleep 5
+        done
+      changed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+        force_apt_get: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      register: apt_cache_result
+      retries: 5
+      delay: 10
+      until: apt_cache_result is succeeded
+
+    - name: Upgrade apt packages
+      ansible.builtin.apt:
+        upgrade: dist
+        force_apt_get: true
+        autoremove: true
+        autoclean: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
