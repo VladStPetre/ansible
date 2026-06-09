@@ -1,0 +1,136 @@
+---
+# Deploys the mount_check service to one or more hosts.
+
+- name: Deploy mount_check MQTT service
+  hosts: mount_check_hosts
+  become: true
+
+  vars:
+    # ── Install paths ─────────────────────────────────────────────────────
+    install_dir: /srv/utils/mount_check
+    env_dir: /srv/utils/mount_check_env
+
+    # ── Polling ───────────────────────────────────────────────────────────
+    poll_interval: 30
+
+    # ── Home Assistant discovery ──────────────────────────────────────────
+    ha_prefix: "homeassistant"
+    host_prefix: "echo"
+
+    # ── Device descriptor ─────────────────────────────────────────────────
+    device_id: "echo-G3"
+    device_name: "Echo host"
+    device_manufacturer: "GMKTec"
+    device_model: "G3 plus"
+
+    # ── Mount units to monitor ────────────────────────────────────────────
+    # List every systemd .mount unit you want to track.
+    mount_units:
+      - mnt-vext2tb.mount
+      - mnt-nas.mount
+
+  tasks:
+
+    # ── System user ───────────────────────────────────────────────────────
+    - name: Create service group
+      ansible.builtin.group:
+        name: "{{ service_group }}"
+        system: true
+        state: present
+
+    - name: Create service user
+      ansible.builtin.user:
+        name: "{{ service_user }}"
+        group: "{{ service_group }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: "{{ install_dir }}"
+        create_home: false
+        state: present
+
+    # ── Directories ───────────────────────────────────────────────────────
+    - name: Create install directory
+      ansible.builtin.file:
+        path: "{{ install_dir }}"
+        state: directory
+        owner: "{{ service_user }}"
+        group: "{{ service_group }}"
+        mode: "0755"
+
+    - name: Create config directory
+      ansible.builtin.file:
+        path: "{{ env_dir }}"
+        state: directory
+        owner: root
+        group: "{{ service_group }}"
+        mode: "0750"
+
+    # ── Python venv + dependencies ────────────────────────────────────────
+    - name: Install python3-venv (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - python3-venv
+          - python3-pip
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+    - name: Create Python virtual environment
+      ansible.builtin.command:
+        cmd: python3 -m venv {{ install_dir }}/venv
+        creates: "{{ install_dir }}/venv/bin/python"
+
+    - name: Install paho-mqtt into venv
+      ansible.builtin.pip:
+        name: paho-mqtt
+        virtualenv: "{{ install_dir }}/venv"
+        state: present
+
+    # ── Application script ────────────────────────────────────────────────
+    - name: Copy mount_check.py
+      ansible.builtin.copy:
+        src: files/mount_check.py          # path relative to playbook
+        dest: "{{ install_dir }}/mount_check.py"
+        owner: "{{ service_user }}"
+        group: "{{ service_group }}"
+        mode: "0755"
+      notify: Restart mount_check
+
+    # ── Environment file (secrets) ────────────────────────────────────────
+    - name: Write environment file
+      ansible.builtin.template:
+        src: templates/mount_check.env.j2
+        dest: "{{ env_dir }}/mount_check.env"
+        owner: root
+        group: "{{ service_group }}"
+        mode: "0640"          # root:mount-check, no world-read
+      notify: Restart mount_check
+
+    # ── Systemd service ───────────────────────────────────────────────────
+    - name: Install systemd service unit
+      ansible.builtin.template:
+        src: templates/mount_check.service.j2
+        dest: /etc/systemd/system/mount_check.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - Reload systemd
+        - Restart mount_check
+
+    - name: Enable and start mount_check service
+      ansible.builtin.systemd:
+        name: mount_check
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart mount_check
+      ansible.builtin.systemd:
+        name: mount_check
+        state: restarted

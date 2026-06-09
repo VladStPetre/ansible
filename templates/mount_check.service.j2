@@ -1,0 +1,35 @@
+# /etc/systemd/system/mount_check.service
+# Managed by Ansible – local edits will be overwritten.
+
+[Unit]
+Description=Mount Check MQTT Reporter
+After=network-online.target{% for unit in mount_units %} {{ unit }}{% endfor %}
+
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ service_user }}
+Group={{ service_group }}
+
+EnvironmentFile={{ env_dir }}/mount_check.env
+
+ExecStart={{ install_dir }}/venv/bin/python {{ install_dir }}/mount_check.py
+
+Restart=on-failure
+RestartSec=15
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mount_check
+
+[Install]
+WantedBy=multi-user.target
