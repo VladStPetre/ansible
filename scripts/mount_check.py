@@ -91,7 +91,7 @@ for unit in [u.strip() for u in _raw_units.split(",") if u.strip()]:
         "config_topic": f"{HA_PREFIX}/binary_sensor/{HOST_PREFIX}/{slug}/config",
         "state_topic":  f"{HOST_PREFIX}/{slug}/state",
         "unique_id":    f"{DEVICE_ID}_{slug}_status",
-        "name":         f"{DEVICE['name']} {slug}",
+        "name":         slug,
     })
 
 # ---------------------------------------------------------------------------
