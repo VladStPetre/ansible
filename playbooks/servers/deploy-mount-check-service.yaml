@@ -72,7 +72,7 @@
     # ── Application script ────────────────────────────────────────────────
     - name: Copy mount_check.py
       ansible.builtin.copy:
-        src: ../../files/mount_check.py          # path relative to playbook
+        src: ../../scripts/mount_check.py          # path relative to playbook
         dest: "{{ install_dir }}/mount_check.py"
         owner: "{{ service_user }}"
         group: "{{ service_group }}"
