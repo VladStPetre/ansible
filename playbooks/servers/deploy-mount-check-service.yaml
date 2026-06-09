@@ -2,7 +2,7 @@
 # Deploys the mount_check service to one or more hosts.
 
 - name: Deploy mount_check MQTT service
-  hosts: echo
+  hosts: all
   become: true
 
   vars:
