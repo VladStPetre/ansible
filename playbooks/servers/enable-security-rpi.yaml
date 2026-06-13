@@ -1,0 +1,138 @@
+---
+- name: Harden SSH and configure UFW
+  hosts: all
+  become: true
+
+  vars:
+    ssh_port: 2277
+
+    # Customize per environment
+    allowed_tcp_ports:
+      - 2277    # SSH
+      - 80      # HTTP
+      - 81      # HTTP
+      - 443      # HTTPS
+      - 444      # HTTPS
+      - 53
+      - 3333
+      - 111
+      - 22000
+      - 22001
+      - 22002
+      - 1883
+      - 9001
+      - 2377
+      - 7946
+
+
+    allowed_udp_ports:
+      - 53
+      - 111
+      - 62931
+      - 6881
+      - 21027
+      - 21028
+      - 21029
+      - 22000
+      - 22001
+      - 22002
+      - 7946
+      - 4789
+      - 9323
+
+  tasks:
+    - name: Force apt to use IPv4
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99force-ipv4
+        content: |
+          Acquire::ForceIPv4 "true";
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Wait for apt/dpkg locks
+      ansible.builtin.shell: |
+        while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+              fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+              fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+          sleep 5
+        done
+      changed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+        force_apt_get: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      register: apt_cache_result
+      retries: 5
+      delay: 10
+      until: apt_cache_result is succeeded
+
+    - name: Install UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        force_apt_get: true
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+
+    - name: Disable root login
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+
+    - name: Configure SSH port
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port\s+'
+        line: "Port {{ ssh_port }}"
+        backup: true
+      notify: Restart SSH
+
+    - name: Validate sshd configuration
+      ansible.builtin.command: sshd -t
+      changed_when: false
+
+    - name: Restart SSH immediately after port change
+      ansible.builtin.meta: flush_handlers
+
+    #
+    # UFW Configuration
+    #
+    - name: Set default incoming policy to deny
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Set default outgoing policy to allow
+      community.general.ufw:
+        direction: outgoing
+        policy: allow
+
+    - name: Allow required TCP ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: "{{ allowed_tcp_ports }}"
+
+    - name: Allow required UDP ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: udp
+      loop: "{{ allowed_udp_ports }}"
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+
+  handlers:
+    - name: Restart SSH
+      ansible.builtin.service:
+        name: ssh
+        state: restarted
