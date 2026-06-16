@@ -1,0 +1,25 @@
+---
+- name: Clone/update ESPHome modular LVGL buttons repo
+  hosts: all
+
+  vars:
+    esphome_data_path: /srv/dvls/esphome-data
+    repo_url: https://github.com/agillis/esphome-modular-lvgl-buttons
+    repo_dest: "{{ esphome_data_path }}/esphome-modular-lvgl-buttons"
+
+  tasks:
+    - name: Ensure ESPHome data directory exists
+      ansible.builtin.file:
+        path: "{{ esphome_data_path }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Clone or update esphome-modular-lvgl-buttons
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        version: main
+        update: true
+        force: true
