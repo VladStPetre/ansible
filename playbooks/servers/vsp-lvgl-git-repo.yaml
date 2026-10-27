@@ -23,3 +23,11 @@
         version: main
         update: true
         force: true
+
+    - name: Copy wallpaper
+      ansible.builtin.copy:
+        src: ../../pictures/red-lines-wallpaper-1024x600.jpg  # path relative to playbook
+        dest: "{{ esphome_data_path }}/wallpapers/red-lines-wallpaper-1024x600.jpg"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
