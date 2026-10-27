@@ -24,6 +24,14 @@
         update: true
         force: true
 
+    - name: Ensure wallpapers directory exists
+      ansible.builtin.file:
+        path: "{{ esphome_data_path }}/wallpapers"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
     - name: Copy wallpaper
       ansible.builtin.copy:
         src: ../../pictures/red-lines-wallpaper-1024x600.jpg  # path relative to playbook
