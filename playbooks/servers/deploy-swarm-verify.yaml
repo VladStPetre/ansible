@@ -12,7 +12,7 @@
         state: directory
         owner: deploy
         group: deploy
-        mode: "0750"
+        mode: "0700"
 
     - name: Copy swarm-verify.sh
       ansible.builtin.copy:
@@ -20,4 +20,4 @@
         dest: /home/deploy/.ci/swarm-verify.sh
         owner: deploy
         group: deploy
-        mode: "0750"
+        mode: "0700"
