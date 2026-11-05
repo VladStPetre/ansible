@@ -68,7 +68,7 @@ for sid in "${service_ids[@]}"; do
       if [ -n "$timg_tag" ] && [ "$timg_tag" != "$spec_tag" ]; then
         mismatch_cnt=$((mismatch_cnt+1))
       fi
-    done < <(docker service ps "$sid" -filter desired-state=running -q --no-trunc)
+    done < <(docker service ps "$sid" --filter desired-state=running -q --no-trunc)
 
       echo "• running_cnt: $running_cnt / failed_cnt $failed_cnt) / mismatch_cnt $mismatch_cnt"
     if [ "$running_cnt" = "$desired_replicas" ] && [ "$failed_cnt" = "0" ] && [ "$mismatch_cnt" = "0" ]; then
