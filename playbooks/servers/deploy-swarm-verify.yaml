@@ -1,0 +1,23 @@
+---
+# Deploys the Swarm verification script for the deploy user.
+
+- name: Deploy swarm-verify script
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Create deploy user's CI directory
+      ansible.builtin.file:
+        path: /home/deploy/.ci
+        state: directory
+        owner: deploy
+        group: deploy
+        mode: "0750"
+
+    - name: Copy swarm-verify.sh
+      ansible.builtin.copy:
+        src: ../../scripts/swarm-verify.sh
+        dest: /home/deploy/.ci/swarm-verify.sh
+        owner: deploy
+        group: deploy
+        mode: "0750"
